@@ -1,0 +1,102 @@
+Primero abro el archivo con read_csv de pandas y lo llamo df. Echo un vistazo para entender las variables y a partir de 
+ahí decido que las variables 'Id','FechaDeInicioLicenciatura' y 'Escolaridad' podrían no ser muy significativas para mi
+modelo de clasificación y entonces las quito con df.drop(). Quito 'Escolaridad' también porque se repite el mismo
+valor para todas las observaciones.
+
+Luego veo que en la columna 'Promedio_HorasDeTrabajoAlMes' hay varios NaN's y decido quitarlos con .dropna() 
+(alternativamente podría substituir los NaN's con el promedio de las observaciones que tienen 'obj' igual a 1 y 
+similarmente con el promedio de las observaciones que tienen 'obj' igual a 0, pero quizá ese cambio podría alterar 
+la predicción).
+
+El siguiente paso es ver el tipo de variables usando .dtypes. Entonces veo que las variables 'Area_Trabajo' y 'Salario'
+son categóricas pero necesitan estar en formato numérico para aplicar mi modelo, por lo que uso .LabelEncoder() y luego
+aplico un .fit_transform() para obtener el formato numérico deseado.
+
+Luego separo la variable 'Obj' usando .copy() guardándola en una variable llamada 'y' y luego la quito del dataframe
+df usando .drop() y lo que resulta lo vuelvo a llamar df.
+
+Ahora separo el dataset en dos, uno para el entrenamiento y otro para la evaluación. Para eso utilizo train_test_split()
+donde le digo que el tamaño del dataset para evaluar sea un 30% del dataset completo. Eso genera dos dataframes llamados
+df_training y df_testing, y dos listas y_train y y_test.
+
+Lo siguiente que intento hacer es aplicar varios algoritmos clasificadores ya que tengo un problema de clasificación.
+Para el entrenamiento, llamo al algoritmo en cuestión y utilizo el atributo .fit() donde debo introducir df_train y y_train como 
+parámetros. Por ejemplo, para bosque aleatorio escribiría RandomForestClassifier.fit(df_train,y_train). Después, para evaluar
+el desempeño del algoritmo, utilizo el 30% del dataset llamado df_test con el atributo .predict() y lo guardo con el 
+nombre predictions, por ejemplo predictions=RandomForestClassifier(df_test), y después utilizo accuracy_score(predictions,y_test)
+para medir la exactitud de la predicción en comparación con los valores reales.
+
+Lo que hice para RandomForestClassifier lo repetí para los siguientes algoritmos: XGBClassifier(), LogisticRegression(),
+MLPClassifier(), DecisionTreeClassifier(), GaussianNB(), SVC(), ExtraTreesClassifier(),KNeighborsClassifier() y GradientBoostingClassifier(). 
+De todos estos, los que me dieron mejor accuracy_score fueron RandomForestClassifier() y XGBClassifier() y decidí trabajar con estos dos.
+
+Para obtener una mejor predicción, decido intentar un par de parámetros con ayuda de un loop. Los parámetros que considero son 'n_estimators' 
+de RandomForestClassifier() y 'n_estimators' junto a 'max_depth' de XGBClassifier(). Esto significa que voy variando
+por ejemplo el parámetro 'n_estimators' de 10 en 10 y cada vez que lo hago aplico el atributo .fit(df_train,y_train),
+el atributo .predict(df_test) y luego accuracy_score(predictions,y_test) y este valor lo voy guardando con .append()
+en una lista que llamé 'valores_exactitud' y también voy guardando el parámetro 'n_estimators' en otra lista llamada
+'indices'. Después, pongo ambas listas ('valores_exactitud' e 'indices') en un solo dataframe y elijo la fila donde ocurrió
+el máximo accuracy_score y me fijo en cuál fue el valor de 'n_estimators' que arrojó ese máximo. Repito esto para ambos clasificadores
+RandomForestClassifier() y XGBClassifier(), en este último también voy variando el parámetro max_depth de 2 a 20.
+
+Los parámetros que dieron mejor predicción con XGBClassifier() fueron n_estimators=150 y max_depth=15, y el parámetro
+que dio mejor predicción con RandomForestClassifier() fue n_estimators=100. Finalmente, hice un ensamble de estos dos
+algoritmos con los parámetros mencionados using VotingClassifier() el cual mejoró un poco la predicción en comparación a
+RandomForestClassifier() o XGBClassifier() por sí solos.
+
+Con los dos algoritmos RandomForestClassifier() y XGBClassifier() saqué las variables más importantes usando el atributo
+.feature_importances_ y luego usé pyplot de matplotlib para visualizar esas variables. Por ejemplo, en el caso de xgboost las tres variables más 
+importantes fueron el nivel de satisfacción, la última evaluación y el promedio de horas de trabajo al mes, mientras que en random forest 
+las tres variables más importantes fueron otra vez el nivel de satisfacción, la antigüedad y el número de proyectos. Entonces una de las 
+conclusiones que derivo es:
+
+*el nivel de satisfacción es un aspecto fundamental para decidir si el empleado seguirá colaborando o dejará la empresa.
+
+Para derivar más conclusiones, usé un gráfico en 3D (usando Axes3d y pylab) para visualizar las observaciones del dataset completo df
+con respecto a las variables 'Nivel_de_Satisfacción','Promedio_HorasDeTrabajoAlMes' y 'Ultima_Evaluacion' (las tres variables más importantes según
+xgboost), donde los puntos rojos representan empleados que se quedan y los puntos azules representan los empleados que se van. 
+A partir de ese gráfico derivé algunas conclusiones, por ejemplo:
+
+* la mayoría de los empleados que seguían colaborando tenían un nivel de satisfacción relativamente alto
+* alrededor de 2/3 partes de los empleados que se fueron tenían un promedio alto de horas de trabajo al mes
+* alrededor de 2/3 partes de los empleados que se fueron tenían un nivel de satisfacción menor a 0.4.
+* alrededor de 1/3 parte de los empleados que dejaron la empresa tuvieron una evaluación baja en su última evaluación.
+
+Hice un segundo gráfico en 3D usando dos de las tres variables más importantes según random forest, a saber 'Nivel_de_Satisfacción' y 'Promedio_HorasDeTrabajoAlMes',
+además de la variable 'Numero_de_Proyectos' que viene de xgboost. A partir del gráfico pude observar algo más: 
+
+* entre los empleados que dejaron la empresa, hubo algunos que tenían un número alto de horas de trabajo y un número alto de proyectos aunque mostraban
+un nivel de satisfacción relativamente alto. Eso parece sugerir que en algunos casos tener una carga grande de trabajo podría ser un motivo para dejar la empresa,
+aunque parezcan tener un nivel de satisfacción relativamente alto.
+* puede ocurrir que un empleado tenga un nivel de satisfacción relativamente alto y aún así dejar la empresa.
+
+Finalmente, hice un zoom del gráfico anterior y de nuevo observé que varios de los que dejaron la empresa tenían un número alto de proyectos y horas de trabajo,
+aunque noté que muchos de los que seguían laborando en la empresa tenían un número de proyectos y horas de trabajo similar.
+
+En resumen, considero que para que un empleado siga en la empresa de galletas es fundamental que tenga un nivel de satisfacción alto, y de ser posible
+un número de horas de trabajo y proyectos moderado, así como tener una buena evaluación. Un empleado que tenga un nivel de satisfacción bajo tiene
+mayor probabilidad de dejar la empresa, pero incluso si tiene un nivel de satisfacción relativamente alto pero un número alto de proyectos y/o horas de trabajo 
+entonces podría estar considerando dejar la empresa, y es un poco más probable que el empleado que deje la empresa si tiene una baja evaluación en comparación a un 
+empleado que sigue laborando con una buena evaluación.
+
+Para terminar, guardo mi modelo con pickle usando open(), .dump() y .close(). Una vez que tengo un batch de nuevas observaciones listas para ser entrenadas,
+me aseguro que estas observaciones estén en el mismo formato con el que entrené mi modelo original, y luego reabro el modelo (tiempo después) con open() y .load()
+y vuelvo a entrenarlo con los nuevos datos usando .fit como hice antes. De esta manera, me aseguro de ir actualizando mi modelo conforme pasa el tiempo para que
+siga funcionando con nuevos clientes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
