@@ -1,3 +1,6 @@
+El objectivo es predecir la variable "Obj" donde 1 significa que el empleado ha dejado la empresa y 0 significa que sigue laborando.
+Luego explicar el por qué un empleado dejría la empresa.
+
 Primero abro el archivo con read_csv de pandas y lo llamo df. Echo un vistazo para entender las variables y a partir de 
 ahí decido que las variables 'Id','FechaDeInicioLicenciatura' y 'Escolaridad' podrían no ser muy significativas para mi
 modelo de clasificación y entonces las quito con df.drop(). Quito 'Escolaridad' también porque se repite el mismo
